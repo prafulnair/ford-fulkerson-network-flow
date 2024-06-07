@@ -1,0 +1,47 @@
+GENERATE_SINK_SOURCE_GRAPH(n, r upperCap)
+{
+    \\n is number of vertices, r in maximum distance between nodes sharing an edge,
+    \\upperCap is maximum capacity value 
+
+    Define a set og vertices V such that |V| = n
+    \\ assign each node V random Cartesian coordinates (x,y) as follows
+
+    for each vertex u in V do{
+        u.x = a uniform random number in [0..1]
+        u.y = a uniform random number in [0..1]
+    }
+
+    \\randomly assign edges of length <= r without creating parallel edges
+
+    for each vertex u in V do 
+    {
+        for each vertex v in do 
+        {
+            if (u!=v) and (u.x - v.x)**2 + (u.y-v.y)**2 <= r**2 {
+                rand = a uniform random number in [0..1]
+                if random <0.5 {
+                    if (u,v) not in E and (v,u) not in E {
+                        E = E  U {(u,v)}
+                    }
+                    else{
+                        if (u,v) not in E and (v,u) not in E {
+                        E = E  U {(v,u)}
+                    }
+                    }
+
+                }
+            }
+        }
+    }
+    
+    for each edge (u,v) in E {
+        (u,v).cap = a uniform random number in [1..upperCap]
+    }
+}
+
+'''
+Using the graph generated, G(V,E), randomly select one 
+of the nodes as the source node s. From s, apply breadth-first 
+search to find a longest acyclic path and define the end node 
+of this longest path as the sink t.
+'''
