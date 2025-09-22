@@ -64,6 +64,11 @@ python main.py
 
 The script will reuse the CSV data in `graph_data/` when available. If any file is missing it regenerates the corresponding
 graphs, saves them through `ford_fulkerson.io`, and then executes every augmenting-path strategy via `ford_fulkerson.runner`.
+Dataset regeneration runs headlessly by default; pass `--visualize` to open Matplotlib windows for each new graph:
+
+```bash
+python main.py --visualize
+```
 
 ## Strategy and utility reference
 
