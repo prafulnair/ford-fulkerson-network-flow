@@ -1,30 +1,45 @@
 # Ford-Fulkerson Algorithm with Random Graph Generation and Diverse Augmenting Path Strategies
 
-This repository contains an implementation of the Ford-Fulkerson Algorithm for network flow optimization, along with a random graph generator. The project integrates four augmenting path strategies: SAP (Shortest Augmenting Path), DFS-like, MaxCap (Maximum Capacity), and Random. Comprehensive testing and evaluation are conducted across multiple simulation sets.
+This repository contains an implementation of the Ford-Fulkerson algorithm for network flow optimisation together with tools to
+generate random source-sink graphs and benchmark multiple augmenting-path strategies. The codebase now ships as a small Python
+package so the graph models, IO helpers, and algorithm variants can be reused from scripts or notebooks in addition to the
+provided command-line runner.
 
 ## Project Overview
 
-### Features
-- **Algorithm Implementation**: Ford-Fulkerson Algorithm with four augmenting path strategies.
-  - **SAP (Shortest Augmenting Path)**
-  - **DFS-like**
-  - **MaxCap (Maximum Capacity)**
-  - **Random**
-- **Random Graph Generation**: Generates random source-sink graphs with node counts ranging from 200 to 500, using (x, y) coordinates and random capacities.
-- **Testing and Evaluation**: Analyzes algorithm correctness and performance across eight simulation sets and a customized set.
+### Module architecture
+The project is organised as the `ford_fulkerson` package plus a lightweight entry point:
 
-### Files
-- `ford_fulkerson/`: Python package that hosts the core modules.
-  - `algorithms.py`: Augmenting-path strategies (SAP, DFS-like, Random, MaxCap).
-  - `graph_generation.py`: Random graph generation helpers and optional visualization utilities.
-  - `io.py`: CSV helpers for persisting and loading graph data.
-  - `models.py`: Dataclasses representing immutable graphs and mutable residual networks.
-- `main.py`: Command line entry point that wires the package modules together.
-- `README.md`: Project documentation.
-- `requirements.txt`: List of required Python libraries.
+- `ford_fulkerson.algorithms` implements the four augmenting-path strategies (SAP, DFS-like, max capacity, and random). Each
+  function consumes a `ResidualNetwork` from `ford_fulkerson.models` and returns flow and path metrics.
+- `ford_fulkerson.graph_generation` is responsible for synthesising random graphs, measuring source/sink candidates, and
+  (optionally) visualising the result using Matplotlib.
+- `ford_fulkerson.models` defines immutable `GraphInstance` snapshots and mutable `ResidualNetwork` objects that all other
+  modules share when reading, writing, or augmenting flows.
+- `ford_fulkerson.io` persists generated graphs to CSV and reloads them as `GraphInstance` objects so simulations can be
+  reproduced.
+- `ford_fulkerson.runner` loads stored graphs once, clones residual networks, and executes every enabled strategy while
+  collecting comparable metrics.
+- `main.py` checks that all eight simulation datasets exist, triggers graph generation if they do not, and delegates execution
+  to `ford_fulkerson.runner`.
 
-### Dependencies
-- `matplotlib`: For visualization purposes.
+### Simulation scenarios and data
+Eight simulation sets are bundled under `graph_data/`. They correspond to every combination of:
+
+| Nodes (`n`) | Radius (`r`) | Capacity upper bound |
+|-------------|--------------|----------------------|
+| 100         | 0.2          | 2                    |
+| 100         | 0.2          | 50                   |
+| 100         | 0.3          | 2                    |
+| 100         | 0.3          | 50                   |
+| 200         | 0.2          | 2                    |
+| 200         | 0.2          | 50                   |
+| 200         | 0.3          | 2                    |
+| 200         | 0.3          | 50                   |
+
+The runner loads these CSV files when present; otherwise, `main.py` regenerates them using the same parameter grid. Each file set
+contains vertices, edges, capacities, adjacency lists, and metadata (such as maximum source-to-sink distance) for reproducible
+experiments.
 
 ## Installation
 
@@ -32,40 +47,43 @@ This repository contains an implementation of the Ford-Fulkerson Algorithm for n
    ```bash
    git clone https://github.com/yourusername/ford-fulkerson-network-flow.git
    cd ford-fulkerson-network-flow
-2. Installed the required libraries
-3.       pip install -r requirements.txt
+   ```
+2. (Optional) Create and activate a virtual environment.
+3. Install the runtime dependency (required for graph visualisation invoked by `main.py`):
+   ```bash
+   pip install matplotlib
+   ```
 
 ## Usage
 
-Run the simulations through the entry point:
+Run the bundled simulations through the entry point:
 
 ```bash
 python main.py
 ```
 
-The script checks for pre-generated simulation data (stored as CSV files) and, if absent, will create new graphs using the package helpers before executing every augmenting-path strategy.
+The script will reuse the CSV data in `graph_data/` when available. If any file is missing it regenerates the corresponding
+graphs, saves them through `ford_fulkerson.io`, and then executes every augmenting-path strategy via `ford_fulkerson.runner`.
 
-## Functions Overview
-#### Augmenting Path Strategies (`ford_fulkerson/algorithms.py`)
+## Strategy and utility reference
 
-All strategies now operate on a `ResidualNetwork` created from a `GraphInstance`.
+- **Augmenting Path Strategies (`ford_fulkerson.algorithms`)**
+  - `ford_fulkerson`: Shortest augmenting path (SAP) using BFS.
+  - `ford_fulkerson_DFS_like`: Depth-first bias using a Dijkstra-style traversal.
+  - `ford_fulkerson_max_capacity`: Greedy augmentation that always chooses the remaining path with maximum bottleneck capacity.
+  - `ford_fulkerson_random`: Randomised tie-breaking on augmenting paths.
+- **Graph Generation (`ford_fulkerson.graph_generation`)**
+  - `GenerateSinkSourceGraph(n, r, upperCap)`: Creates a random graph and returns it as a `GraphInstance`.
+  - `visualize_graph(...)`: Optional Matplotlib helper for inspecting generated graphs.
+- **Data Persistence (`ford_fulkerson.io`)**
+  - `save_graph_data(graph, graph_no)`: Serialises vertices, edges, capacities, adjacency lists, and metadata to CSV.
+  - `read_data(...)`: Loads the CSV bundle for a graph ID and reconstructs a `GraphInstance`.
+- **Simulation Runner (`ford_fulkerson.runner`)**
+  - `run_strategies_for_graph(graph_no, strategies=None)`: Loads the stored graph once, clones the residual network per
+    strategy, and returns comparable metrics (max flow, augmenting paths, mean path length, MPL).
 
-    DFS-like: ford_fulkerson_DFS_like(residual_network)
-    Random: ford_fulkerson_random(residual_network)
-    MaxCap: ford_fulkerson_max_capacity(residual_network)
-    SAP: ford_fulkerson(residual_network)
+## Recent changes
 
-#### Graph Generation (`ford_fulkerson/graph_generation.py`)
+- The project previously lived as a single monolithic script. It has been reorganised into the modules described above so that
+  algorithms, models, graph generation, and IO code can be reused independently and tested in isolation.
 
-    GenerateSinkSourceGraph(n, r, upperCap): Generates a random source-sink graph as a GraphInstance.
-    breadth_first_search(V, E, capacities, adjlist, source): Helper used to determine sink candidates.
-    get_sink(distance, parent, source): Returns the sink at the end of the longest acyclic path from the source.
-
-#### Visualization (Optional)
-
-    visualize_graph(vertices, edges, capacities, source, sink): Visualizes the generated graph (for debugging and presentation purposes).
-
-#### Data Persistence (`ford_fulkerson/io.py`)
-
-    save_graph_data(graph, graph_no): Persist generated graph data to CSV files.
-    read_data(...): Read graph data from the CSV files created by `save_graph_data` and return a GraphInstance.
