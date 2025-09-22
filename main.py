@@ -1,5 +1,6 @@
 """Entry point for running Ford-Fulkerson simulations."""
 
+import argparse
 import os
 
 from ford_fulkerson.graph_generation import GenerateSinkSourceGraph, visualize_graph
@@ -19,23 +20,37 @@ SIMULATION_VALUES = [
 ]
 
 
-def generate_graphs():
+def generate_graphs(visualize: bool = False):
     graph_no = 0
     for n, r, upperCap in SIMULATION_VALUES:
         graph_no += 1
         graph = GenerateSinkSourceGraph(n, r, upperCap)
 
-        visualize_graph(
-            graph.vertices,
-            graph.edges,
-            graph.capacities,
-            graph.source,
-            graph.sink,
-        )
+        if visualize:
+            visualize_graph(
+                graph.vertices,
+                graph.edges,
+                graph.capacities,
+                graph.source,
+                graph.sink,
+            )
         save_graph_data(graph, graph_no)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate simulation datasets and run Ford-Fulkerson strategies."
+    )
+    parser.add_argument(
+        "--visualize",
+        action="store_true",
+        help="Render generated graphs when datasets are regenerated.",
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
     missing_files = False
     for graph_no in range(1, 9):
         for file_type in ["vertices", "edges", "capacities", "adjlist", "meta_info"]:
@@ -47,7 +62,7 @@ def main():
                 break
 
     if missing_files:
-        generate_graphs()
+        generate_graphs(visualize=args.visualize)
 
     for graph_no in range(1, 9):
         run_strategies_for_graph(graph_no)
