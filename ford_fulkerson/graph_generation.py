@@ -2,16 +2,28 @@
 
 import random
 from collections import deque
+from typing import Dict, List, Sequence, Set, Tuple
 
 import matplotlib.pyplot as plt
 
+from .models import GraphInstance
 
-def visualize_graph(V, E, capacities, source, sink):
+Vertex = Tuple[float, float]
+Edge = Tuple[Vertex, Vertex]
+
+
+def visualize_graph(
+    vertices: Sequence[Vertex],
+    edges: Sequence[Edge],
+    capacities,
+    source: Vertex,
+    sink: Vertex,
+):
     """Render the generated graph using matplotlib (for debugging/visualization)."""
-    for vertex in V:
+    for vertex in vertices:
         plt.scatter(*vertex, color="blue", marker="o")
 
-    for edge in E:
+    for edge in edges:
         plt.arrow(
             *edge[0],
             edge[1][0] - edge[0][0],
@@ -32,57 +44,66 @@ def visualize_graph(V, E, capacities, source, sink):
     plt.show()
 
 
-def GenerateSinkSourceGraph(n, r, upperCap):
+def GenerateSinkSourceGraph(n: int, r: float, upperCap: float) -> GraphInstance:
     """Generate a random directed graph with source and sink candidates."""
-    Vertices = []
-    E = set()
-    capacities = {}
-    adjacency_list = {}
+
+    vertices: List[Vertex] = []
+    edges: Set[Edge] = set()
+    capacities: Dict[Edge, int] = {}
+    adjacency_list: Dict[Vertex, List[Vertex]] = {}
 
     for _ in range(n):
         node = (round(random.uniform(0, 1), 4), round(random.uniform(0, 1), 4))
-        Vertices.append(node)
-    for v in Vertices:
-        adjacency_list[v] = []
+        vertices.append(node)
+        adjacency_list[node] = []
 
-    for u in Vertices:
-        for v in Vertices:
-            if u != v and (u[0] - v[0]) ** 2 + (u[1] - v[1]) ** 2 <= r ** 2:
+    for u in vertices:
+        for v in vertices:
+            if u == v:
+                continue
+            if (u[0] - v[0]) ** 2 + (u[1] - v[1]) ** 2 <= r**2:
                 rand = random.uniform(0, 1)
-                if rand < 0.5:
-                    edge1 = (u, v)
-                    edge2 = (v, u)
-                    if (edge1 not in E) and (edge2 not in E):
-                        E.add(edge1)
-                        if u in adjacency_list:
-                            adjacency_list[u].append(v)
-                        else:
-                            adjacency_list[u] = [v]
-                else:
-                    edge1 = (v, u)
-                    edge2 = (u, v)
-                    if (edge1 not in E) and (edge2 not in E):
-                        E.add(edge1)
-                        if v in adjacency_list:
-                            adjacency_list[v].append(u)
-                        else:
-                            adjacency_list[v] = [u]
+                edge = (u, v) if rand < 0.5 else (v, u)
+                reverse = (edge[1], edge[0])
+                if edge not in edges and reverse not in edges:
+                    edges.add(edge)
+                    adjacency_list.setdefault(edge[0], []).append(edge[1])
 
-    for edge in E:
+    for edge in edges:
         capacities[edge] = int(round(random.uniform(1, upperCap), 4))
 
-    source = random.choice(Vertices)
+    source = random.choice(vertices)
+    distance, parent = breadth_first_search(vertices, list(edges), capacities, adjacency_list, source)
+    sink, max_distance = get_sink(distance, parent, source)
 
-    return Vertices, E, capacities, source, adjacency_list
+    return GraphInstance(
+        vertices=vertices,
+        edges=list(edges),
+        capacities=capacities,
+        adjacency_list=adjacency_list,
+        source=source,
+        sink=sink,
+        n=n,
+        r=r,
+        upper_cap=upperCap,
+        max_distance=max_distance,
+        total_edges=len(edges),
+    )
 
 
-def get_sink(distance, parent):
+def get_sink(distance, parent, source):
     """Return the sink at the end of the longest acyclic path from the source."""
-    max_distance = max(distance.values())
 
-    sink = [node for node, value in distance.items() if value == max_distance][0]
+    finite_distances = {node: dist for node, dist in distance.items() if dist != float("inf")}
+    if not finite_distances:
+        return source, 0
 
-    return sink, max_distance
+    max_distance = max(finite_distances.values(), default=0)
+    for node, value in finite_distances.items():
+        if value == max_distance:
+            return node, max_distance
+
+    return source, 0
 
 
 def breadth_first_search(V, E, capacities, adjlist, source):
