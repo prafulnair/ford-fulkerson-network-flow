@@ -80,6 +80,8 @@ def run_strategies_for_graph(
     print(f"\nGraph {graph_no}: source {graph.source}, sink {graph.sink}")
     if graph.total_edges is not None:
         print(f"Total edges: {graph.total_edges}")
+    if graph.seed is not None:
+        print(f"Seed: {graph.seed}")
 
     results: Dict[str, StrategyMetrics] = {}
 

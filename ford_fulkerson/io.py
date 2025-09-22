@@ -34,6 +34,7 @@ def save_graph_data(graph: GraphInstance, graph_no: int) -> None:
                 "uppercap",
                 "longest_pathToSink",
                 "total_edges",
+                "seed",
             ]
         )
         writer.writerow(
@@ -47,6 +48,7 @@ def save_graph_data(graph: GraphInstance, graph_no: int) -> None:
                 graph.upper_cap,
                 meta_distance_value,
                 graph.total_edges,
+                "" if graph.seed is None else graph.seed,
             ]
         )
         print("meta info saved")
@@ -108,6 +110,15 @@ def read_data(
         except ValueError:
             total_edges = 0
 
+        seed_value: int | None = None
+        if len(row) > 9:
+            raw_seed = row[9]
+            if raw_seed not in ("", None):
+                try:
+                    seed_value = int(float(raw_seed))
+                except ValueError:
+                    seed_value = None
+
     vertices: List[Vertex] = []
     with open(file_path2, "r") as csvfile:
         reader = csv.reader(csvfile)
@@ -160,5 +171,6 @@ def read_data(
         upper_cap=upperCap,
         max_distance=maxdist,
         total_edges=total_edges or len(edges),
+        seed=seed_value,
     )
 
