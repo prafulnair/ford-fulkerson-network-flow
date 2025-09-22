@@ -73,6 +73,19 @@ graphs remain distinct):
 python main.py --visualize --seed 1234
 ```
 
+## Interactive Streamlit explorer
+
+The repository also ships with a lightweight Streamlit dashboard so non-developers can explore the datasets and strategy
+behaviour without writing code. Install the additional dependencies and launch the app from the project root:
+
+```bash
+pip install streamlit plotly
+streamlit run app.py
+```
+
+The application exposes graph metadata, tabular metrics, comparative charts, and an interactive Plotly visualisation of the
+residual network for the selected augmenting-path strategy.
+
 ## Testing
 
 The repository uses [Pytest](https://docs.pytest.org/) for its unit tests. Once installed, run the
