@@ -49,9 +49,10 @@ experiments.
    cd ford-fulkerson-network-flow
    ```
 2. (Optional) Create and activate a virtual environment.
-3. Install the runtime dependency (required for graph visualisation invoked by `main.py`):
+3. Install the project dependencies. Matplotlib powers optional graph visualisation while Pytest
+   drives the automated test suite:
    ```bash
-   pip install matplotlib
+   pip install matplotlib pytest
    ```
 
 ## Usage
@@ -68,6 +69,15 @@ Dataset regeneration runs headlessly by default; pass `--visualize` to open Matp
 
 ```bash
 python main.py --visualize
+```
+
+## Testing
+
+The repository uses [Pytest](https://docs.pytest.org/) for its unit tests. Once installed, run the
+suite from the project root:
+
+```bash
+pytest
 ```
 
 ## Strategy and utility reference
