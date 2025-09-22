@@ -1,253 +1,224 @@
 """Augmenting path strategies for the Ford-Fulkerson algorithm."""
 
-from collections import defaultdict
+from __future__ import annotations
+
 import heapq
 import random
+from collections import deque
+from typing import Dict, List, Tuple
+
+from .models import Edge, ResidualNetwork, Vertex
 
 
-def dijkstra_foundation_DFSLike(source, sink, adjlist, capacities, parent, typee):
+def _reconstruct_path(
+    parent: Dict[Vertex, Vertex | None], source: Vertex, sink: Vertex
+) -> List[Edge]:
+    path: List[Edge] = []
+    current = sink
+
+    while current != source:
+        predecessor = parent.get(current)
+        if predecessor is None:
+            return []
+        path.append((predecessor, current))
+        current = predecessor
+
+    path.reverse()
+    return path
+
+
+def dijkstra_foundation_DFSLike(
+    network: ResidualNetwork, parent: Dict[Vertex, Vertex | None], strategy: str
+) -> bool:
     """Shared Dijkstra-style search used by DFS-like and random strategies."""
-    distances = {vex: float("Inf") for vex in adjlist}
-    distances[source] = 0
-    max_capacity = max(capacities.values())
+
+    parent.clear()
+    parent[network.source] = None
+
+    distances = {vertex: float("inf") for vertex in network.vertices}
+    distances[network.source] = 0
+    max_capacity = int(network.max_capacity())
     counter = 0
-    priority_queue = [(0, source)]
+    priority_queue: List[Tuple[float, Vertex]] = [(0, network.source)]
 
     while priority_queue:
         current_distance, u = heapq.heappop(priority_queue)
+        if current_distance != distances[u]:
+            continue
 
-        for v in adjlist[u]:
-            residual_capacity = capacities.get((u, v), 0) - capacities.get((v, u), 0)
-            if distances[v] == float("Inf"):
-                if residual_capacity > 0 and distances[u] + 1 < distances[v]:
-                    distances[v] = distances[u] + 1
-                    parent[v] = u
-                    if typee == "dfs_like":
-                        distances[v] = distances[v] - counter
-                        counter -= 1
-                    else:
-                        distances[v] = distances[v] - random.randint(0, max_capacity)
-                        counter -= 1
-                    heapq.heappush(priority_queue, (distances[v], v))
+        for v in network.neighbors(u):
+            residual_capacity = network.get_capacity(u, v)
+            if residual_capacity <= 0 or distances[v] != float("inf"):
+                continue
 
-    path = []
-    current = sink
+            distances[v] = distances[u] + 1
+            parent[v] = u
 
-    while True:
-        path.insert(0, current)
-        current = parent[current]
+            priority_value = distances[v]
+            if strategy == "dfs_like":
+                priority_value -= counter
+                counter -= 1
+            elif max_capacity > 0:
+                priority_value -= random.randint(0, max_capacity)
+                counter -= 1
 
-        if current is None:
-            break
-    if distances[sink] != float("Inf"):
-        return True
-    return False
+            heapq.heappush(priority_queue, (priority_value, v))
+
+    return distances[network.sink] != float("inf")
 
 
-def ford_fulkerson_random(capacities, source, sink, adjlist):
+def ford_fulkerson_random(network: ResidualNetwork) -> Tuple[float, int, float]:
     """Ford-Fulkerson using randomized tie-breaking for augmenting paths."""
-    graph = capacities
-    random.choice(list(capacities.values()))
-    parent = defaultdict(lambda: None)
-    max_flow_random = 0
-    typee = "random"
 
-    edge_lengths = []
-
+    parent: Dict[Vertex, Vertex | None] = {}
+    max_flow_random = 0.0
+    edge_lengths: List[int] = []
     total_augmenting_paths = 0
-    edges = 0
-    while dijkstra_foundation_DFSLike(source, sink, adjlist, capacities, parent, typee):
-        edges = 0
+
+    while dijkstra_foundation_DFSLike(network, parent, "random"):
+        path = _reconstruct_path(parent, network.source, network.sink)
+        if not path:
+            break
+        bottleneck = min(network.get_capacity(u, v) for u, v in path)
+        if bottleneck <= 0:
+            break
+
         total_augmenting_paths += 1
-        counter_var = max(capacities.values())
-        flow_path = float("Inf")
-        t = sink
-        while t != source:
-            edges += 1
-            flow_path = min(flow_path, graph[parent[t], t])
-            t = parent[t]
-        max_flow_random += flow_path
-        edge_lengths.append(edges)
+        max_flow_random += bottleneck
+        edge_lengths.append(len(path))
+        network.augment(path, bottleneck)
 
-        vex = sink
-        while vex != source:
-            u = parent[vex]
-            graph[u, vex] -= flow_path
-
-            if (vex, u) not in graph:
-                graph[vex, u] = flow_path
-            else:
-                graph[vex, u] += flow_path
-            vex = parent[vex]
-
-    total_edges = 0
-    for edge in edge_lengths:
-        total_edges += edge
-    if total_augmenting_paths == 0:
-        print("Total augmenting path for random coming as zero")
-    mean_length = total_edges / total_augmenting_paths if total_augmenting_paths > 0 else 0
-
+    mean_length = sum(edge_lengths) / total_augmenting_paths if total_augmenting_paths else 0
     return max_flow_random, total_augmenting_paths, mean_length
 
 
-def get_residual_capacity(E, u, v):
-    return E.get((u, v), 0)
-
-
-def dijkstra_maxCap(capacities, adjList, source, sink):
-    priority_queue = []
-    initial_element = (-float("inf"), source, [])
-    priority_queue.append(initial_element)
-
-    heapq.heapify(priority_queue)
-
-    capacity = {}
-    for v in adjList.keys():
-        capacity[v] = 0
-
-    capacity[source] = float("Inf")
+def dijkstra_maxCap(network: ResidualNetwork) -> Tuple[float, List[Edge]]:
+    priority_queue: List[Tuple[float, Vertex, List[Edge]]] = [
+        (-float("inf"), network.source, [])
+    ]
+    capacity: Dict[Vertex, float] = {vertex: 0.0 for vertex in network.vertices}
+    capacity[network.source] = float("inf")
 
     while priority_queue:
-        curr_capacity, curr_vertex, curr_path = heapq.heappop(priority_queue)
+        neg_capacity, current_vertex, current_path = heapq.heappop(priority_queue)
+        current_capacity = -neg_capacity
 
-        if curr_vertex == sink:
-            return capacity[sink], curr_path
+        if current_vertex == network.sink:
+            return capacity[current_vertex], current_path
 
-        for neighbor in adjList.get(curr_vertex, []):
-            edge_capacity = get_residual_capacity(capacities, curr_vertex, neighbor)
-            min_capacity = min(capacity[curr_vertex], edge_capacity)
-            neighborval = tuple(neighbor)
-            if min_capacity > capacity.get(neighborval, 0):
-                capacity[neighborval] = min_capacity
-                new_path = curr_path + [(curr_vertex, neighborval)]
-                heapq.heappush(priority_queue, (-min_capacity, neighborval, new_path))
+        for neighbor in network.neighbors(current_vertex):
+            edge_capacity = network.get_capacity(current_vertex, neighbor)
+            if edge_capacity <= 0:
+                continue
+            min_capacity = min(current_capacity, edge_capacity)
+            if min_capacity > capacity.get(neighbor, 0):
+                capacity[neighbor] = min_capacity
+                new_path = current_path + [(current_vertex, neighbor)]
+                heapq.heappush(priority_queue, (-min_capacity, neighbor, new_path))
 
-    return 0, []
+    return 0.0, []
 
 
-def ford_fulkerson_max_capacity(capacities, source, sink, adjList):
-    graph = capacities
-
+def ford_fulkerson_max_capacity(network: ResidualNetwork) -> Tuple[float, int, float]:
     total_augmenting_paths = 0
     total_length = 0
-
-    max_flow_max_capacity = 0
+    max_flow_max_capacity = 0.0
 
     while True:
-        capacity, augmenting_path = dijkstra_maxCap(graph, adjList, source, sink)
+        capacity, augmenting_path = dijkstra_maxCap(network)
 
-        if capacity == 0:
+        if capacity <= 0 or not augmenting_path:
             break
 
         total_length += len(augmenting_path)
         total_augmenting_paths += 1
         max_flow_max_capacity += capacity
+        network.augment(augmenting_path, capacity)
 
-        for u, v in augmenting_path:
-            residual_capacity = get_residual_capacity(graph, u, v)
-            if (u, v) in graph:
-                graph[u, v] -= capacity
-            if (v, u) in graph:
-                graph[v, u] += capacity
-
-    mean_length = total_length / total_augmenting_paths if total_augmenting_paths > 0 else 0
+    mean_length = total_length / total_augmenting_paths if total_augmenting_paths else 0
     return max_flow_max_capacity, total_augmenting_paths, mean_length
 
 
-def ford_fulkerson_DFS_like(capacities, source, sink, adjlist):
-    graph = capacities
-    max(capacities.values())
-
-    edge_length = []
-    edges = 0
+def ford_fulkerson_DFS_like(network: ResidualNetwork) -> Tuple[float, int, float]:
+    parent: Dict[Vertex, Vertex | None] = {}
+    max_flow_DFS_like = 0.0
+    edge_lengths: List[int] = []
     total_augmenting_paths = 0
 
-    parent = defaultdict(lambda: None)
-    max_flow_DFS_like = 0
-    typee = "dfs_like"
-    while dijkstra_foundation_DFSLike(source, sink, adjlist, capacities, parent, typee):
-        edges = 0
+    while dijkstra_foundation_DFSLike(network, parent, "dfs_like"):
+        path = _reconstruct_path(parent, network.source, network.sink)
+        if not path:
+            break
+        bottleneck = min(network.get_capacity(u, v) for u, v in path)
+        if bottleneck <= 0:
+            break
+
         total_augmenting_paths += 1
-        counter_var = max(capacities.values())
-        flow_path = float("Inf")
-        t = sink
-        while t != source:
-            edges += 1
-            flow_path = min(flow_path, graph[parent[t], t])
-            t = parent[t]
-        max_flow_DFS_like += flow_path
-        edge_length.append(edges)
+        max_flow_DFS_like += bottleneck
+        edge_lengths.append(len(path))
+        network.augment(path, bottleneck)
 
-        vex = sink
-        while vex != source:
-            u = parent[vex]
-            graph[u, vex] -= flow_path
-
-            if (vex, u) not in graph:
-                graph[vex, u] = flow_path
-            else:
-                graph[vex, u] += flow_path
-            vex = parent[vex]
-
-    total_edges = 0
-    for edges in edge_length:
-        total_edges += edges
-    mean_length = total_edges / total_augmenting_paths if total_augmenting_paths > 0 else 0
+    mean_length = sum(edge_lengths) / total_augmenting_paths if total_augmenting_paths else 0
     return max_flow_DFS_like, total_augmenting_paths, mean_length
 
 
-def BFS_FF_SAP(source, sink, parent, graph, vertices):
-    visited = set()
-    queue = []
+def BFS_FF_SAP(
+    network: ResidualNetwork, parent: Dict[Vertex, Vertex | None]
+) -> bool:
+    visited = {network.source}
+    queue = deque([network.source])
 
-    queue.append(source)
-    visited.add(source)
+    parent.clear()
+    parent[network.source] = None
 
     while queue:
-        u = queue.pop(0)
+        u = queue.popleft()
 
-        for v in vertices:
-            if v not in visited and graph.get((u, v), 0) > 0:
-                queue.append(v)
-                visited.add(v)
-                parent[v] = u
-                if v == sink:
-                    return True
+        for v in network.neighbors(u):
+            if v in visited:
+                continue
+            residual = network.get_capacity(u, v)
+            if residual <= 0:
+                continue
+            visited.add(v)
+            parent[v] = u
+            if v == network.sink:
+                return True
+            queue.append(v)
+
     return False
 
 
-def ford_fulkerson(capacities, source, sink):
+def ford_fulkerson(network: ResidualNetwork) -> Tuple[float, int, float]:
+    parent: Dict[Vertex, Vertex | None] = {}
+    max_flow_SAP = 0.0
+    edge_lengths: List[int] = []
     total_augmenting_paths = 0
-    graph = capacities
-    vertices = set(v for edge in graph.keys() for v in edge)
-    parent = defaultdict(lambda: None)
-    max_flow_SAP = 0
-    edge_lengths = []
-    edges = 0
-    while BFS_FF_SAP(source, sink, parent, graph, vertices):
-        total_augmenting_paths = total_augmenting_paths + 1
-        flow_path = float("Inf")
-        t = sink
-        while t != source:
-            edges = edges + 1
-            flow_path = min(flow_path, graph[parent[t], t])
-            t = parent[t]
-        max_flow_SAP += flow_path
-        edge_lengths.append(edges)
 
-        vex = sink
-        while vex != source:
-            u = parent[vex]
-            graph[u, vex] -= flow_path
+    while BFS_FF_SAP(network, parent):
+        path = _reconstruct_path(parent, network.source, network.sink)
+        if not path:
+            break
+        bottleneck = min(network.get_capacity(u, v) for u, v in path)
+        if bottleneck <= 0:
+            break
 
-            if (vex, u) not in graph:
-                graph[vex, u] = flow_path
-            else:
-                graph[vex, u] += flow_path
-            vex = parent[vex]
-    total_edges = 0
-    for edge in edge_lengths:
-        total_edges = total_edges + edges
-    mean_length = total_edges / total_augmenting_paths if total_augmenting_paths > 0 else 0
+        total_augmenting_paths += 1
+        max_flow_SAP += bottleneck
+        edge_lengths.append(len(path))
+        network.augment(path, bottleneck)
+
+    mean_length = sum(edge_lengths) / total_augmenting_paths if total_augmenting_paths else 0
     return max_flow_SAP, total_augmenting_paths, mean_length
+
+
+def ford_fulkerson_strategies(network: ResidualNetwork) -> Dict[str, Tuple[float, int, float]]:
+    """Run all strategies on independent clones of ``network`` for convenience."""
+
+    return {
+        "sap": ford_fulkerson(network.clone()),
+        "dfs_like": ford_fulkerson_DFS_like(network.clone()),
+        "max_capacity": ford_fulkerson_max_capacity(network.clone()),
+        "random": ford_fulkerson_random(network.clone()),
+    }
 
