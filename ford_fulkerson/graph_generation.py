@@ -44,8 +44,13 @@ def visualize_graph(
     plt.show()
 
 
-def GenerateSinkSourceGraph(n: int, r: float, upperCap: float) -> GraphInstance:
+def GenerateSinkSourceGraph(
+    n: int, r: float, upperCap: float, seed: int | None = None
+) -> GraphInstance:
     """Generate a random directed graph with source and sink candidates."""
+
+    if seed is not None:
+        random.seed(seed)
 
     vertices: List[Vertex] = []
     edges: Set[Edge] = set()
@@ -88,6 +93,7 @@ def GenerateSinkSourceGraph(n: int, r: float, upperCap: float) -> GraphInstance:
         upper_cap=upperCap,
         max_distance=max_distance,
         total_edges=len(edges),
+        seed=seed,
     )
 
 

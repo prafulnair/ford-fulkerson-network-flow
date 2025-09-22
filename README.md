@@ -65,10 +65,12 @@ python main.py
 
 The script will reuse the CSV data in `graph_data/` when available. If any file is missing it regenerates the corresponding
 graphs, saves them through `ford_fulkerson.io`, and then executes every augmenting-path strategy via `ford_fulkerson.runner`.
-Dataset regeneration runs headlessly by default; pass `--visualize` to open Matplotlib windows for each new graph:
+Dataset regeneration runs headlessly by default; pass `--visualize` to open Matplotlib windows for each new graph. Use
+`--seed` to make the generated graphs reproducible (the provided seed is incremented for each simulation value so the eight
+graphs remain distinct):
 
 ```bash
-python main.py --visualize
+python main.py --visualize --seed 1234
 ```
 
 ## Testing
@@ -88,10 +90,12 @@ pytest
   - `ford_fulkerson_max_capacity`: Greedy augmentation that always chooses the remaining path with maximum bottleneck capacity.
   - `ford_fulkerson_random`: Randomised tie-breaking on augmenting paths.
 - **Graph Generation (`ford_fulkerson.graph_generation`)**
-  - `GenerateSinkSourceGraph(n, r, upperCap)`: Creates a random graph and returns it as a `GraphInstance`.
+  - `GenerateSinkSourceGraph(n, r, upperCap, seed=None)`: Creates a random graph using the optional RNG seed and returns it as a
+    `GraphInstance`.
   - `visualize_graph(...)`: Optional Matplotlib helper for inspecting generated graphs.
 - **Data Persistence (`ford_fulkerson.io`)**
-  - `save_graph_data(graph, graph_no)`: Serialises vertices, edges, capacities, adjacency lists, and metadata to CSV.
+  - `save_graph_data(graph, graph_no)`: Serialises vertices, edges, capacities, adjacency lists, and metadata (including the
+    seed when present) to CSV.
   - `read_data(...)`: Loads the CSV bundle for a graph ID and reconstructs a `GraphInstance`.
 - **Simulation Runner (`ford_fulkerson.runner`)**
   - `run_strategies_for_graph(graph_no, strategies=None)`: Loads the stored graph once, clones the residual network per

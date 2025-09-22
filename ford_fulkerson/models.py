@@ -24,6 +24,7 @@ class GraphInstance:
     upper_cap: float
     max_distance: float | None = None
     total_edges: int | None = None
+    seed: int | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "vertices", tuple(self.vertices))

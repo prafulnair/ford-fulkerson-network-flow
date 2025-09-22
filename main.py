@@ -20,11 +20,10 @@ SIMULATION_VALUES = [
 ]
 
 
-def generate_graphs(visualize: bool = False):
-    graph_no = 0
-    for n, r, upperCap in SIMULATION_VALUES:
-        graph_no += 1
-        graph = GenerateSinkSourceGraph(n, r, upperCap)
+def generate_graphs(visualize: bool = False, seed: int | None = None):
+    for graph_no, (n, r, upperCap) in enumerate(SIMULATION_VALUES, start=1):
+        graph_seed = seed + graph_no - 1 if seed is not None else None
+        graph = GenerateSinkSourceGraph(n, r, upperCap, seed=graph_seed)
 
         if visualize:
             visualize_graph(
@@ -46,6 +45,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Render generated graphs when datasets are regenerated.",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        help=(
+            "Base random seed for reproducible graph generation. "
+            "Each simulation value increments the base by one."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -62,7 +69,7 @@ def main():
                 break
 
     if missing_files:
-        generate_graphs(visualize=args.visualize)
+        generate_graphs(visualize=args.visualize, seed=args.seed)
 
     for graph_no in range(1, 9):
         run_strategies_for_graph(graph_no)
