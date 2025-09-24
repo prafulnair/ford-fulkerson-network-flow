@@ -3,6 +3,8 @@
 import random
 from collections import deque
 from typing import Dict, List, Sequence, Set, Tuple
+from typing import Optional
+
 
 import matplotlib.pyplot as plt
 
@@ -45,7 +47,8 @@ def visualize_graph(
 
 
 def GenerateSinkSourceGraph(
-    n: int, r: float, upperCap: float, seed: int | None = None
+        
+    n: int, r: float, upperCap: float, seed: Optional[int] = None
 ) -> GraphInstance:
     """Generate a random directed graph with source and sink candidates."""
 

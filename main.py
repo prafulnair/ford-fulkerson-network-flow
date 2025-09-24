@@ -2,6 +2,7 @@
 
 import argparse
 import os
+from typing import Optional
 
 from ford_fulkerson.graph_generation import GenerateSinkSourceGraph, visualize_graph
 from ford_fulkerson.io import save_graph_data
@@ -20,7 +21,7 @@ SIMULATION_VALUES = [
 ]
 
 
-def generate_graphs(visualize: bool = False, seed: int | None = None):
+def generate_graphs(visualize: bool = False, seed: Optional[int] = None):
     for graph_no, (n, r, upperCap) in enumerate(SIMULATION_VALUES, start=1):
         graph_seed = seed + graph_no - 1 if seed is not None else None
         graph = GenerateSinkSourceGraph(n, r, upperCap, seed=graph_seed)
