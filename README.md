@@ -117,5 +117,6 @@ pytest
 ## Recent changes
 
 - The project previously lived as a single monolithic script. It has been reorganised into the modules described above so that
-  algorithms, models, graph generation, and IO code can be reused independently and tested in isolation.
+  algorithms, models, graph generation, and IO code can be reused independently and tested in isolation. GPT-Codex was used for
+  code documentation, technical-debt removal, fixing bugs and for deployment help.
 
